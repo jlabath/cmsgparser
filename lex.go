@@ -129,6 +129,25 @@ func (l *lexer) errorf(format string, args ...interface{}) stateFn {
 	return nil
 }
 
+//ifollows is basically case insensitive HasPrefix starting at
+//current position to see if input contains the expected string
+func (l *lexer) ifollows(es string) bool {
+	var pos = l.pos
+	//range on string returns runes
+	for _, runeValue := range es {
+		if pos >= len(l.input) {
+			return false
+		}
+		inpRune, wdth := utf8.DecodeRuneInString(l.input[pos:])
+		pos += wdth
+		//compare runes if not match return false
+		if unicode.ToLower(inpRune) != unicode.ToLower(runeValue) {
+			return false
+		}
+	}
+	return true
+}
+
 // nextItem returns the next item from the input.
 func (l *lexer) nextItem() item {
 	item := <-l.items
@@ -196,14 +215,15 @@ func lexAfterLink(l *lexer) stateFn {
 //lexAfterLinkInstructions is for lexing after link instructions such as moving the card somewhere
 func lexAfterLinkInstructions(l *lexer) stateFn {
 	//move or move to is the only one we support right now
-	if strings.ToLower(l.input[l.pos:l.pos+len(conMoveTo)]) == conMoveTo {
+	if l.ifollows(conMoveTo) {
 		l.skip(len(conMoveTo))
 		return lexMoveDst
-	} else if strings.ToLower(l.input[l.pos:l.pos+len(conMove)]) == conMove {
+	} else if l.ifollows(conMove) {
 		l.skip(len(conMove))
 		return lexMoveDst
 	} else {
-		//just ignore anything till end or newline
+		//just ignore any spaces till end or newline
+		//or lexText on printable character
 		for {
 			switch r := l.next(); {
 			case r == eof:
@@ -211,6 +231,9 @@ func lexAfterLinkInstructions(l *lexer) stateFn {
 				return nil
 			case r == '\n':
 				l.ignore()
+				return lexText
+			case unicode.IsSpace(r) == false:
+				l.backup()
 				return lexText
 
 			}
