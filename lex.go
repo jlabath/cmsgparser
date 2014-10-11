@@ -46,7 +46,22 @@ const (
 	eof        rune   = -1
 	conMoveTo  string = "move to "
 	conMove    string = "move "
+	unresSpec  string = "-~_" //missing '.' read below
 )
+
+//isUnreserved returns true if rune is unreserved character as defined in https://tools.ietf.org/html/rfc3986
+//with the expeption of period which is valid unreserved character yet hopefully not likely to be seen in trello shortlink
+func isUnreserved(c rune) bool {
+	if unicode.IsLetter(c) {
+		return true
+	} else if unicode.IsNumber(c) {
+		return true
+	} else if strings.IndexRune(unresSpec, c) > -1 {
+		return true
+	} else {
+		return false
+	}
+}
 
 // stateFn represents the state of the scanner
 // as a function that returns the next state.
@@ -181,7 +196,7 @@ func lexLink(l *lexer) stateFn {
 	cardIdStart := l.pos
 	for {
 		switch r := l.next(); {
-		case r == eof || r == '\n' || unicode.IsSpace(r) || r == '/':
+		case r == eof || isUnreserved(r) == false:
 			if cardIdStart < l.pos-1 {
 				l.backup()
 				l.emit(itemLink)

@@ -76,15 +76,19 @@ func TestParser6(t *testing.T) {
 	root, err := Parse(test1)
 	ok(t, err)
 	equals(t, 3, len(root.Children()))
-	/*
-		node := root.Children()[0]
-		equals(t, TextNode, node.Type)
-		equals(t, "Foo bar ", node.Value)
-		node = root.Children()[1]
-		equals(t, LinkNode, node.Type)
-		equals(t, "https://trello.com/c/foo", node.Value)
-		node = root.Children()[2]
-		equals(t, TextNode, node.Type)
-		equals(t, "boom", node.Value)
-	*/
+}
+
+func TestParserOnlyUnreservedChars(t *testing.T) {
+	var test1 string = "Foo bar (https://trello.com/c/foo) boom"
+	root, err := Parse(test1)
+	ok(t, err)
+	equals(t, 3, len(root.Children()))
+	node := root.Children()[1]
+	equals(t, LinkNode, node.Type)
+	equals(t, "https://trello.com/c/foo", node.Value)
+	//this is correct since there is a space here expect
+	//the normal text parsing to kick in since it's not an instruction
+	node = root.Children()[2]
+	equals(t, TextNode, node.Type)
+	equals(t, "boom", node.Value)
 }
